@@ -11,6 +11,7 @@ import io.github.xiong_it.easypay.network.NetworkClientFactory;
 import io.github.xiong_it.easypay.network.NetworkClientInterf;
 import io.github.xiong_it.easypay.pay.paystrategy.ALiPayStrategy;
 import io.github.xiong_it.easypay.pay.paystrategy.PayContext;
+import io.github.xiong_it.easypay.pay.paystrategy.UPPayStrategy;
 import io.github.xiong_it.easypay.pay.paystrategy.WeChatPayStrategy;
 import io.github.xiong_it.easypay.util.NetworkUtils;
 
@@ -53,6 +54,10 @@ public final class EasyPay {
     public static final int ALI_PAY_UNKNOW_ERR = 6004;
     public static final int ALI_PAY_OTHER_ERR = 6005;
 
+    // 银联结果码
+    public static final int UPPAY_PLUGIN_NOT_INSTALLED = -10;
+    public static final int UPPAy_PLUGIN_NEED_UPGRADE = -11;
+
     private EasyPay(PayParams params) {
         mPayParams = params;
     }
@@ -81,12 +86,8 @@ public final class EasyPay {
      * @param prePayInfo
      */
     private void doPay(String prePayInfo) {
-        PayWay way = mPayParams.getPayWay();
-        if (mPayParams.getPayWay() == null) {
-            throw new NullPointerException("请设置支付方式");
-        }
         PayContext pc = null;
-
+        PayWay way = mPayParams.getPayWay();
         EasyPay.PayCallBack callBack = new PayCallBack() {
             @Override
             public void onPayCallBack(int code) {
@@ -103,6 +104,10 @@ public final class EasyPay {
                 pc = new PayContext(new ALiPayStrategy(mPayParams, prePayInfo, callBack));
                 break;
 
+            case UPPay:
+                pc = new PayContext(new UPPayStrategy(mPayParams, prePayInfo, callBack));
+                break;
+
             default:
                 break;
         }
@@ -116,6 +121,10 @@ public final class EasyPay {
      * @return
      */
     public EasyPay requestPayInfo(OnPayInfoRequestListener onPayInfoRequestListener) {
+        if (mPayParams.getPayWay() == null) {
+            throw new NullPointerException("请设置支付方式");
+        }
+
         mOnPayInfoRequestListener = onPayInfoRequestListener;
         mOnPayInfoRequestListener.onPayInfoRequetStart();
 
@@ -154,6 +163,8 @@ public final class EasyPay {
      * @param code
      */
     private void sendPayResult(int code) {
+        if (mPayParams == null) return;
+
         switch (code) {
             case COMMON_PAY_OK:
                 mOnPayResultListener.onPaySuccess(mPayParams.getPayWay());
@@ -171,6 +182,7 @@ public final class EasyPay {
     }
 
     private void releaseMomery() {
+        if (mPayParams == null) return;
         Activity activity = mPayParams.getActivity();
         activity = null;
         mPayParams = null;
